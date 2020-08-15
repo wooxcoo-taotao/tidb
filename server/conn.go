@@ -726,7 +726,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 		startTime := time.Now()
 		if err = cc.dispatch(ctx, data); err != nil {
 			if terror.ErrorEqual(err, io.EOF) {
-				cc.addMetrics(data[0], startTime, nil)
+				cc.addMetrics(ctx, data[0], startTime, nil)
 				disconnectNormal.Inc()
 				return
 			} else if terror.ErrResultUndetermined.Equal(err) {
@@ -752,7 +752,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 			err1 := cc.writeError(err)
 			terror.Log(err1)
 		}
-		cc.addMetrics(data[0], startTime, err)
+		cc.addMetrics(ctx, data[0], startTime, err)
 		cc.pkt.sequence = 0
 	}
 }
@@ -789,7 +789,7 @@ func errStrForLog(err error) string {
 	return errors.ErrorStack(err)
 }
 
-func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
+func (cc *clientConn) addMetrics(ctx context.Context, cmd byte, startTime time.Time, err error) {
 	if cmd == mysql.ComQuery && cc.ctx.Value(sessionctx.LastExecuteDDL) != nil {
 		// Don't take DDL execute time into account.
 		// It's already recorded by other metrics in ddl package.
@@ -825,6 +825,7 @@ func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
 	case "Show":
 		queryDurationHistogramShow.Observe(time.Since(startTime).Seconds())
 	case "Begin":
+		logutil.Logger(ctx).Info("hello transaction")
 		queryDurationHistogramBegin.Observe(time.Since(startTime).Seconds())
 	case "Commit":
 		queryDurationHistogramCommit.Observe(time.Since(startTime).Seconds())
